@@ -5,8 +5,18 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).parent
 load_dotenv(BASE_DIR / ".env")
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
+
+def _get_secret(key: str) -> str | None:
+    """优先从 Streamlit Cloud secrets 读取，其次环境变量。"""
+    try:
+        import streamlit as st
+        return st.secrets.get(key)
+    except Exception:
+        return os.getenv(key)
+
+
+ANTHROPIC_API_KEY = _get_secret("ANTHROPIC_API_KEY")
+STABILITY_API_KEY = _get_secret("STABILITY_API_KEY")
 
 if not ANTHROPIC_API_KEY:
     raise RuntimeError("请在 .env 文件中设置 ANTHROPIC_API_KEY")
