@@ -16,13 +16,23 @@ def _get_secret(key: str) -> str | None:
 
 
 ANTHROPIC_API_KEY = _get_secret("ANTHROPIC_API_KEY")
+DEEPSEEK_API_KEY = _get_secret("DEEPSEEK_API_KEY")
 STABILITY_API_KEY = _get_secret("STABILITY_API_KEY")
 
-if not ANTHROPIC_API_KEY:
-    raise RuntimeError("请在 .env 文件中设置 ANTHROPIC_API_KEY")
+LLM_PROVIDER = (_get_secret("LLM_PROVIDER") or "anthropic").lower()
+DEEPSEEK_BASE_URL = _get_secret("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
 
-# Claude 模型
-MODEL = "claude-sonnet-4-5"
+if LLM_PROVIDER == "anthropic" and not ANTHROPIC_API_KEY:
+    raise RuntimeError("请在 .env 文件中设置 ANTHROPIC_API_KEY，或将 LLM_PROVIDER 改为 deepseek")
+if LLM_PROVIDER == "deepseek" and not DEEPSEEK_API_KEY:
+    raise RuntimeError("请在 .env 文件中设置 DEEPSEEK_API_KEY，或将 LLM_PROVIDER 改为 anthropic")
+
+# 模型
+ANTHROPIC_MODEL = _get_secret("ANTHROPIC_MODEL") or "claude-sonnet-4-5"
+DEEPSEEK_MODEL = _get_secret("DEEPSEEK_MODEL") or "deepseek-chat"
+MODEL = DEEPSEEK_MODEL if LLM_PROVIDER == "deepseek" else ANTHROPIC_MODEL
+MAX_TOKENS = int(_get_secret("MAX_TOKENS") or "1024")
+TEMPERATURE = float(_get_secret("TEMPERATURE") or "0.7")
 
 # 输出目录 — 都放在桌面 project 文件夹
 OUTPUT_DIR = BASE_DIR / "output"

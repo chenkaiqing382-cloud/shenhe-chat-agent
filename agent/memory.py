@@ -172,8 +172,8 @@ class MemoryStore:
 
         return [dict(r) for r in rows]
 
-    def extract_and_store_facts(self, conversation_id: str, anthropic_client):
-        """调用 Claude 从最近对话中提取关于用户的事实。"""
+    def extract_and_store_facts(self, conversation_id: str, llm_client):
+        """调用模型从最近对话中提取关于用户的事实。"""
         messages = self.get_all_messages(conversation_id)
         # 至少要有一些对话才提取
         if len(messages) < 6:
@@ -193,16 +193,14 @@ FACT: <事实内容> | CATEGORY: <user_info/preference/event/general> | IMPORTAN
 对话记录：
 {transcript}
 
-请提取事实："""
+        请提取事实："""
 
         try:
-            response = anthropic_client.messages.create(
-                model=config.MODEL,
-                max_tokens=512,
+            raw = llm_client.complete(
+                system_prompt="",
                 messages=[{"role": "user", "content": extract_prompt}],
+                max_tokens=512,
             )
-            text_blocks = [b for b in response.content if b.type == "text"]
-            raw = text_blocks[0].text if text_blocks else ""
 
             # 解析提取结果
             for line in raw.strip().split("\n"):

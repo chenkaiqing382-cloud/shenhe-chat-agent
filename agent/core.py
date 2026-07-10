@@ -1,6 +1,5 @@
-import anthropic
-
 import config
+from agent.llm import LLMClient
 from agent.personality import PersonalityEngine
 from agent.memory import MemoryStore
 from agent.prompts import build_system_prompt
@@ -11,7 +10,7 @@ class AgentCore:
     """Nova 的核心大脑 — 编排记忆、情感、LLM、多模态。"""
 
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        self.client = LLMClient()
         self.personality = PersonalityEngine()
         self.memory = MemoryStore()
         self.conversation_id = self.memory.create_conversation()
@@ -45,15 +44,11 @@ class AgentCore:
 
         # 7. 调用 Claude
         try:
-            response = self.client.messages.create(
-                model=config.MODEL,
-                max_tokens=1024,
-                system=system_prompt,
+            response_text = self.client.complete(
+                system_prompt=system_prompt,
                 messages=messages,
+                max_tokens=config.MAX_TOKENS,
             )
-            # 从响应中提取文本（可能包含 thinking 块）
-            text_blocks = [b for b in response.content if b.type == "text"]
-            response_text = text_blocks[0].text if text_blocks else ""
         except Exception as e:
             clean_text = _friendly_model_error(e)
             self.memory.add_message(self.conversation_id, "assistant", clean_text)
@@ -118,6 +113,6 @@ class AgentCore:
 
 def _friendly_model_error(error: Exception) -> str:
     text = str(error)
-    if "invalid x-api-key" in text or "authentication_error" in text or "401" in text:
-        return "山风暂歇，模型密钥似乎还未配置正确。请在 Streamlit Secrets 中检查 ANTHROPIC_API_KEY。"
+    if "invalid x-api-key" in text or "authentication_error" in text or "401" in text or "403" in text:
+        return "山风暂歇，模型密钥似乎还未配置正确。请检查 Streamlit Secrets 中的模型 API key。"
     return f"山间灵息一时受阻，模型连接失败：{text[:220]}"
