@@ -44,15 +44,24 @@ class AgentCore:
             messages.append({"role": "user", "content": user_message})
 
         # 7. 调用 Claude
-        response = self.client.messages.create(
-            model=config.MODEL,
-            max_tokens=1024,
-            system=system_prompt,
-            messages=messages,
-        )
-        # 从响应中提取文本（可能包含 thinking 块）
-        text_blocks = [b for b in response.content if b.type == "text"]
-        response_text = text_blocks[0].text if text_blocks else ""
+        try:
+            response = self.client.messages.create(
+                model=config.MODEL,
+                max_tokens=1024,
+                system=system_prompt,
+                messages=messages,
+            )
+            # 从响应中提取文本（可能包含 thinking 块）
+            text_blocks = [b for b in response.content if b.type == "text"]
+            response_text = text_blocks[0].text if text_blocks else ""
+        except Exception as e:
+            clean_text = _friendly_model_error(e)
+            self.memory.add_message(self.conversation_id, "assistant", clean_text)
+            return {
+                "text": clean_text,
+                "image_path": None,
+                "audio_path": None,
+            }
 
         # 8. 解析图片请求
         clean_text, image_prompt = parse_image_request(response_text)
@@ -105,3 +114,10 @@ class AgentCore:
     def get_messages_for_display(self) -> list[dict]:
         """获取当前对话的所有消息，供 UI 渲染。"""
         return self.memory.get_all_messages(self.conversation_id)
+
+
+def _friendly_model_error(error: Exception) -> str:
+    text = str(error)
+    if "invalid x-api-key" in text or "authentication_error" in text or "401" in text:
+        return "山风暂歇，模型密钥似乎还未配置正确。请在 Streamlit Secrets 中检查 ANTHROPIC_API_KEY。"
+    return f"山间灵息一时受阻，模型连接失败：{text[:220]}"
